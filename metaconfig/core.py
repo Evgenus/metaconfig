@@ -10,7 +10,7 @@ __all__ = [
     'construct_from_sequence',
     'construct_from_string',
     'construct_from_integer',
-    'resolve_builtin',
+    'construct_from_nothing',
     'Config',
 ]
 
@@ -35,10 +35,9 @@ def construct_from_integer(cls, loader, node):
     scalar = int(loader.construct_scalar(node))
     return cls(scalar)
 
-def resolve_builtin(loader, node):
-    scalar = loader.construct_scalar(node)
-    return resolve(scalar)
-Loader.add_constructor("!resolve", resolve_builtin)
+def construct_from_nothing(cls, loader, node):
+    assert not loader.construct_scalar(node)
+    return cls()
 
 def _create_core(frame):
     class TypesTable(object):
@@ -61,12 +60,14 @@ def _create_core(frame):
     frame.loader.add_constructor("!TypesTable", partial(construct_from_mapping, TypesTable))
     frame.loader.add_constructor("!get_dependency", partial(construct_from_string, frame.get))
     frame.loader.add_constructor("!add_dependencies", partial(construct_from_mapping, frame.add))
+    frame.loader.add_constructor("!resolve", partial(construct_from_string, frame.resolve))
 
 class ConfigStackFrame(object):
     def __init__(self, filepath, back):
         self._filepath = filepath
         self._back = back
         self._dependencies = {}
+        self._resolved = {}
         class FrameLoader(Loader): pass
         self._loader = FrameLoader
         _create_core(self)
@@ -88,6 +89,11 @@ class ConfigStackFrame(object):
         for name, con in frame._loader.yaml_constructors.items():
             self._loader.add_constructor(name, con)
         self._dependencies.update(frame._dependencies)
+
+    def resolve(self, dotted):
+        if dotted not in self._resolved:
+            self._resolved[dotted] = resolve(dotted)
+        return self._resolved[dotted]
 
     @property
     def loader(self):
