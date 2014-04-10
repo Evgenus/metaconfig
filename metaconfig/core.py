@@ -3,6 +3,7 @@ from collections import UserDict
 from pathlib import Path
 
 import yaml
+import yaml.nodes
 from zope.dottedname.resolve import resolve
 
 __all__ = [
@@ -10,7 +11,8 @@ __all__ = [
     'construct_from_sequence',
     'construct_from_string',
     'construct_from_integer',
-    'construct_from_nothing',
+    'construct_from_none',
+    'construct_from_any',
     'Config',
 ]
 
@@ -35,7 +37,16 @@ def construct_from_integer(cls, loader, node):
     scalar = int(loader.construct_scalar(node))
     return cls(scalar)
 
-def construct_from_nothing(cls, loader, node):
+def construct_from_any(cls, loader, node):
+    if isinstance(node, yaml.nodes.ScalarNode):
+        value = loader.construct_scalar(node)
+    elif isinstance(node, yaml.nodes.SequenceNode):
+        value = loader.construct_sequence(node, True)
+    elif isinstance(node, yaml.nodes.MappingNode):
+        value = loader.construct_mapping(node, True)
+    return cls(value)
+
+def construct_from_none(cls, loader, node):
     assert not loader.construct_scalar(node)
     return cls()
 
