@@ -14,7 +14,7 @@ Programming Language :: Python
 
 AUTHOR = "Eugene Chernyshov"
 EMAIL = "chernyshov.eugene@gmail.com"
-URL = ""
+URL = "https://github.com/Evgenus/metaconfig"
 KEYWORDS = ""
 
 here = os.path.abspath(os.path.dirname(__file__))
