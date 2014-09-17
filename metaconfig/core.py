@@ -52,13 +52,10 @@ def construct_from_none(cls, loader, node):
 
 def _create_core(frame):
     class TypesTable(object):
+        _frame = frame
         def __init__(self, **types):
             for name, declaration in types.items():
                 self.register(name, **declaration)
-
-        @property
-        def loader(self):
-            return frame.loader
 
         def register(self, _name, type, load):
             loader = partial(load, type)
@@ -66,7 +63,7 @@ def _create_core(frame):
                 tag = _name
             else:
                 tag = "!" + _name
-            self.loader.add_constructor(tag, loader)
+            self._frame.loader.add_constructor(tag, loader)
 
     frame.loader.add_constructor("!TypesTable", partial(construct_from_mapping, TypesTable))
     frame.loader.add_constructor("!get_dependency", partial(construct_from_string, frame.get))
@@ -98,6 +95,7 @@ class ConfigStackFrame(object):
 
     def grab(self, frame):
         for name, con in frame._loader.yaml_constructors.items():
+            if name in self._loader.yaml_constructors: continue
             self._loader.add_constructor(name, con)
         self._dependencies.update(frame._dependencies)
 
@@ -113,10 +111,7 @@ class ConfigStackFrame(object):
 class Config(object):
     def __init__(self):
         self._files = []
-        self._root = ConfigStackFrame(None, None)
-        self._head = self._root
-        loader  = self._root.loader
-        loader.add_constructor("!load_config", partial(construct_from_string, self.load))
+        self._head = ConfigStackFrame(None, None)
 
     def peek_frame(self):
         return self._head
@@ -131,7 +126,8 @@ class Config(object):
         return top
 
     def get_path(self, relative):
-        return self.peek_frame().dirpath / relative
+        frame = self.peek_frame()
+        return frame.dirpath / relative
 
     def push_file(self, relative):
         self._files.append(relative)
@@ -144,6 +140,7 @@ class Config(object):
     def get_dependency(self, name): 
         return self.peek_frame().get(name)
 
+    @property
     def extra_files(self):
         return self._files
 
@@ -164,6 +161,7 @@ class Config(object):
         
         self.push_file(filename)
         loader = self.peek_frame().loader
+        loader.add_constructor("!load_config", partial(construct_from_string, self.load))
         self.log("Loading config: {}".format(filename))
         data = list(yaml.load_all(stream, Loader=loader))
         self.pop_file()

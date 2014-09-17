@@ -6,4 +6,4 @@ __all__ = (['__version__']
     + core.__all__
     )
 
-__version__ = '0.1'
+__version__ = '0.1.1'
