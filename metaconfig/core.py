@@ -47,7 +47,7 @@ def construct_from_any(cls, loader, node):
     return cls(value)
 
 def construct_from_none(cls, loader, node):
-    assert not loader.construct_scalar(node)
+    assert loader.construct_scalar(node) is None
     return cls()
 
 def _create_core(frame):
