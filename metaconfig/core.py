@@ -50,7 +50,7 @@ def construct_from_none(cls, loader, node):
     assert loader.construct_scalar(node) is None
     return cls()
 
-def _create_core(frame):
+def _create_core(frame, names):
     class TypesTable(object):
         _frame = frame
         def __init__(self, **types):
@@ -65,20 +65,20 @@ def _create_core(frame):
                 tag = "!" + _name
             self._frame.loader.add_constructor(tag, loader)
 
-    frame.loader.add_constructor("!TypesTable", partial(construct_from_mapping, TypesTable))
-    frame.loader.add_constructor("!get_dependency", partial(construct_from_string, frame.get))
-    frame.loader.add_constructor("!add_dependencies", partial(construct_from_mapping, frame.add))
-    frame.loader.add_constructor("!resolve", partial(construct_from_string, frame.resolve))
+    frame.loader.add_constructor("!" + names["declare"], partial(construct_from_mapping, TypesTable))
+    frame.loader.add_constructor("!" + names["get"], partial(construct_from_string, frame.get))
+    frame.loader.add_constructor("!" + names["let"], partial(construct_from_mapping, frame.add))
+    frame.loader.add_constructor("!" + names["resolve"], partial(construct_from_string, frame.resolve))
 
 class ConfigStackFrame(object):
-    def __init__(self, filepath, back):
+    def __init__(self, filepath, back, names):
         self._filepath = filepath
         self._back = back
         self._dependencies = {}
         self._resolved = {}
         class FrameLoader(Loader): pass
         self._loader = FrameLoader
-        _create_core(self)
+        _create_core(self, names=names)
 
     @property
     def dirpath(self):
@@ -108,10 +108,21 @@ class ConfigStackFrame(object):
     def loader(self):
         return self._loader
 
+DEFAULT_NAMES = {
+    "declare": "declare",
+    "get": "get",
+    "let": "let",
+    "resolve": "resolve",
+    "load": "load"
+}
+
 class Config(object):
-    def __init__(self):
+    def __init__(self, names=None):
+        if names is None:
+            names = DEFAULT_NAMES
         self._files = []
-        self._head = ConfigStackFrame(None, None)
+        self._names = names
+        self._head = ConfigStackFrame(None, None, self._names)
 
     def peek_frame(self):
         return self._head
@@ -131,13 +142,13 @@ class Config(object):
 
     def push_file(self, relative):
         self._files.append(relative)
-        frame = ConfigStackFrame(relative, self._head)
+        frame = ConfigStackFrame(relative, self._head, self._names)
         self.push_frame(frame)
 
     def pop_file(self):
         return self.pop_frame().dirpath
 
-    def get_dependency(self, name): 
+    def get(self, name): 
         return self.peek_frame().get(name)
 
     @property
@@ -161,7 +172,7 @@ class Config(object):
         
         self.push_file(filename)
         loader = self.peek_frame().loader
-        loader.add_constructor("!load_config", partial(construct_from_string, self.load))
+        loader.add_constructor("!" + self._names["load"], partial(construct_from_string, self.load))
         self.log("Loading config: {}".format(filename))
         data = list(yaml.load_all(stream, Loader=loader))
         self.pop_file()
