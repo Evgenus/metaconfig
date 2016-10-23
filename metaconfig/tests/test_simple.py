@@ -42,7 +42,8 @@ def test_declare_resolve():
     with StringIO(dedent(source)) as stream:
         config.load(stream)
 
-    eq_(int, config.get("integer"))
-    eq_(str, config.get("string"))
-    eq_(float, config.get("float"))
-    eq_(type(None), config.get("null"))
+    assert_is(int, config.get("integer"))
+    assert_is(str, config.get("string"))
+    assert_is(float, config.get("float"))
+    assert_is(type(None), config.get("null"))
+
