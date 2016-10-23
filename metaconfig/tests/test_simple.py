@@ -47,3 +47,44 @@ def test_declare_resolve():
     assert_is(float, config.get("float"))
     assert_is(type(None), config.get("null"))
 
+def test_declare_get():
+
+    source = """
+    --- !declare
+    type:
+        type: !resolve builtins.type
+        load: !resolve metaconfig.construct_from_sequence
+    tuple:
+        type: !resolve builtins.tuple
+        load: !resolve metaconfig.construct_from_any
+    ...
+
+    --- !let
+    MyInteger: !type 
+        - MyInteger
+        - !tuple
+            - !resolve builtins.int
+        -
+            one: 1
+    ...
+
+    --- !declare
+    MyInteger:
+        type: !get MyInteger
+        load: !resolve metaconfig.construct_from_integer
+    ...
+
+    --- !let
+    value: !MyInteger 10
+    ...
+
+    """
+
+    config = Config()
+
+    with StringIO(dedent(source)) as stream:
+        config.load(stream)
+
+    assert_equals(10, config.get("value"))
+    assert_is_instance(config.get("value"), int)
+    assert_equals(1, config.get("value").one)
