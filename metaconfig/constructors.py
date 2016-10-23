@@ -7,6 +7,7 @@ __all__ = [
     'construct_from_integer',
     'construct_from_any',
     'construct_from_none',
+    'construct_from_args_kwargs',
 ]
 
 def construct_from_mapping(cls, loader, node):
@@ -37,3 +38,8 @@ def construct_from_any(cls, loader, node):
 def construct_from_none(cls, loader, node):
     assert loader.construct_scalar(node) is None
     return cls()
+
+def construct_from_args_kwargs(cls, loader, node):
+    mapping = loader.construct_mapping(node, True)
+    args = mapping.pop("=", ())
+    return cls(*args, **mapping)
