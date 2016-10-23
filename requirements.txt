@@ -1,3 +1,2 @@
 zope.dottedname
-pathlib
 pyyaml
