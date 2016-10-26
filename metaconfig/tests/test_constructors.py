@@ -135,3 +135,37 @@ def test_construct_from_none():
     assert_tuple_equal(value[0], ())
     assert_dict_equal(value[1], {})
 
+def test_construct_from_args_kwargs():
+
+    source = """
+    --- !declare
+    func:
+        type: !resolve metaconfig.tests.utils.identity
+        load: !resolve metaconfig.construct_from_args_kwargs
+    ...
+
+    --- !let
+    value1: !func
+        =: 
+        - 1
+        - 2
+        a: 1
+        b: 2
+    value2: !func
+        a: 1
+        b: 2
+    ...
+    """
+
+    config = Config()
+
+    with StringIO(dedent(source)) as stream:
+        config.load(stream)
+
+    value1 = config.get("value1")
+    assert_tuple_equal(value1[0], (1, 2))
+    assert_dict_equal(value1[1], {"a": 1, "b": 2})
+
+    value2 = config.get("value2")
+    assert_tuple_equal(value2[0], ())
+    assert_dict_equal(value2[1], {"a": 1, "b": 2})
