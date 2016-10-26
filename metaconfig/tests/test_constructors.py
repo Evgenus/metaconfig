@@ -4,9 +4,6 @@ from textwrap import dedent
 
 from metaconfig import Config
 
-# construct_from_string
-# construct_from_integer
-# construct_from_any
 # construct_from_none
 # construct_from_args_kwargs
 
@@ -95,3 +92,25 @@ def test_construct_from_string():
     assert_tuple_equal(value3[0], ("3.14",))
     assert_dict_equal(value3[1], {})
 
+def test_construct_from_integer():
+
+    source = """
+    --- !declare
+    func:
+        type: !resolve metaconfig.tests.utils.identity
+        load: !resolve metaconfig.construct_from_integer
+    ...
+
+    --- !let
+    value: !func 1
+    ...
+    """
+
+    config = Config()
+
+    with StringIO(dedent(source)) as stream:
+        config.load(stream)
+
+    value = config.get("value")
+    assert_tuple_equal(value2[0], (1,))
+    assert_dict_equal(value2[1], {})
