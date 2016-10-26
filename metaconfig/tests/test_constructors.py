@@ -4,9 +4,6 @@ from textwrap import dedent
 
 from metaconfig import Config
 
-# construct_from_none
-# construct_from_args_kwargs
-
 def test_construct_from_mapping():
 
     source = """
@@ -112,5 +109,6 @@ def test_construct_from_integer():
         config.load(stream)
 
     value = config.get("value")
-    assert_tuple_equal(value2[0], (1,))
-    assert_dict_equal(value2[1], {})
+    assert_tuple_equal(value[0], (1,))
+    assert_dict_equal(value[1], {})
+
