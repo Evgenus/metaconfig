@@ -36,7 +36,7 @@ def construct_from_any(cls, loader, node):
     return cls(value)
 
 def construct_from_none(cls, loader, node):
-    assert loader.construct_scalar(node) is None
+    assert loader.construct_yaml_null(node) is None
     return cls()
 
 def construct_from_args_kwargs(cls, loader, node):

@@ -112,3 +112,26 @@ def test_construct_from_integer():
     assert_tuple_equal(value[0], (1,))
     assert_dict_equal(value[1], {})
 
+def test_construct_from_none():
+
+    source = """
+    --- !declare
+    func:
+        type: !resolve metaconfig.tests.utils.identity
+        load: !resolve metaconfig.construct_from_none
+    ...
+
+    --- !let
+    value: !func ~
+    ...
+    """
+
+    config = Config()
+
+    with StringIO(dedent(source)) as stream:
+        config.load(stream)
+
+    value = config.get("value")
+    assert_tuple_equal(value[0], ())
+    assert_dict_equal(value[1], {})
+
