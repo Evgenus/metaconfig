@@ -4,8 +4,6 @@ from textwrap import dedent
 
 from metaconfig import Config
 
-# construct_from_mapping
-# construct_from_sequence
 # construct_from_string
 # construct_from_integer
 # construct_from_any
@@ -37,3 +35,29 @@ def test_construct_from_mapping():
 
     assert_tuple_equal(value[0], ())
     assert_dict_equal(value[1], {"a": 1, "b": 2})
+
+def test_construct_from_sequence():
+
+    source = """
+    --- !declare
+    func:
+        type: !resolve metaconfig.tests.utils.identity
+        load: !resolve metaconfig.construct_from_sequence
+    ...
+
+    --- !let
+    value: !func
+        - 1
+        - 2
+    ...
+    """
+
+    config = Config()
+
+    with StringIO(dedent(source)) as stream:
+        config.load(stream)
+
+    value = config.get("value")
+
+    assert_tuple_equal(value[0], (1, 2))
+    assert_dict_equal(value[1], {})
