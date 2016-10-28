@@ -16,7 +16,13 @@ def test_construct_from_mapping():
     --- !let
     value: !func
         a: 1
-        b: 2
+        c: 2
+        b: 3
+        d: 4
+        f: 5
+        e: 6
+        h: 7
+        g: 8
     ...
     """
 
@@ -28,7 +34,7 @@ def test_construct_from_mapping():
     value = config.get("value")
 
     assert_tuple_equal(value[0], ())
-    assert_dict_equal(value[1], {"a": 1, "b": 2})
+    assert_dict_equal(value[1], {"a": 1, "c": 2, "b": 3, "d": 4, "f": 5, "e": 6, "h": 7, "g": 8})
 
 def test_construct_from_sequence():
 
