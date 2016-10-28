@@ -1,5 +1,5 @@
 from functools import reduce, partial
-from collections import UserDict
+from collections import OrderedDict
 from pathlib import Path
 
 import yaml
@@ -15,9 +15,41 @@ __all__ = [
 ]
 
 if yaml.__with_libyaml__:
-    class Loader(yaml.CLoader): pass
+    BaseLoader = yaml.CLoader
 else:
-    class Loader(yaml.Loader): pass
+    BaseLoader = yaml.Loader
+
+class Loader(BaseLoader):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.add_constructor(u'tag:yaml.org,2002:map', type(self).construct_yaml_map)
+        self.add_constructor(u'tag:yaml.org,2002:omap', type(self).construct_yaml_map)
+
+    def construct_yaml_map(self, node):
+        data = OrderedDict()
+        yield data
+        value = self.construct_mapping(node)
+        data.update(value)
+
+    def construct_mapping(self, node, deep=False):
+        if isinstance(node, yaml.MappingNode):
+            self.flatten_mapping(node)
+        else:
+            raise yaml.constructor.ConstructorError(None, None,
+                'expected a mapping node, but found %s' % node.id, node.start_mark)
+
+        mapping = OrderedDict()
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            try:
+                hash(key)
+            except TypeError as exc:
+                raise yaml.constructor.ConstructorError('while constructing a mapping',
+                    node.start_mark, 'found unacceptable key (%s)' % exc, key_node.start_mark)
+            value = self.construct_object(value_node, deep=deep)
+            mapping[key] = value
+        return mapping
 
 def _create_core(frame, names):
     class TypesTable(object):
