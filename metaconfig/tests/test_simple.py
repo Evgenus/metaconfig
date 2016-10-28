@@ -56,7 +56,7 @@ def test_declare_get():
         load: !resolve metaconfig.construct_from_sequence
     tuple:
         type: !resolve builtins.tuple
-        load: !resolve metaconfig.construct_from_any
+        load: !resolve metaconfig.construct_from_value
     ...
 
     --- !let
