@@ -224,3 +224,72 @@ def test_construct_from_value():
 
     value5 = config.get("value5")[0]
     assert_tuple_equal(value5, (3.141592, ))
+
+def test_construct_from_any():
+
+    source = """
+    --- !declare
+    func:
+        type: !resolve metaconfig.tests.utils.identity
+        load: !resolve metaconfig.construct_from_any
+    ...
+
+    --- !let
+    value1: !func
+        a: 1
+        c: 2
+        b: 3
+        d: 4
+        f: 5
+        e: 6
+        h: 7
+        g: 8
+    value2: !func
+        - 1
+        - 2
+        - 3
+    value3: !func "test"
+    value4: !func 12345678
+    value5: !func 3.141592
+    value6: !func
+        =: 
+        - 1
+        - 2
+        a: 1
+        b: 2
+    value7: !func ~
+    ...
+    """
+
+    config = Config()
+
+    with StringIO(dedent(source)) as stream:
+        config.load(stream)
+
+    value1 = config.get("value1")
+    assert_tuple_equal(value1[0], ())
+    assert_dict_equal(value1[1], {"a": 1, "c": 2, "b": 3, "d": 4, "f": 5, "e": 6, "h": 7, "g": 8})
+    
+    value2 = config.get("value2")
+    assert_tuple_equal(value2[0], (1, 2, 3))
+    assert_dict_equal(value2[1], {})
+
+    value3 = config.get("value3")
+    assert_tuple_equal(value3[0], ("test",))
+    assert_dict_equal(value3[1], {})
+
+    value4 = config.get("value4")
+    assert_tuple_equal(value4[0], (12345678, ))
+    assert_dict_equal(value4[1], {})
+
+    value5 = config.get("value5")
+    assert_tuple_equal(value5[0], (3.141592, ))
+    assert_dict_equal(value5[1], {})
+
+    value6 = config.get("value6")
+    assert_tuple_equal(value6[0], (1, 2))
+    assert_dict_equal(value6[1], {"a": 1, "b": 2})
+
+    value7 = config.get("value7")
+    assert_tuple_equal(value7[0], (None,))
+    assert_dict_equal(value7[1], {})
