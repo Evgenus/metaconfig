@@ -27,6 +27,12 @@ def construct_from_integer(cls, loader, node):
     scalar = int(loader.construct_scalar(node))
     return cls(scalar)
 
+def construct_from_scalar(cls, loader, node):
+    tag = loader.resolve(yaml.nodes.ScalarNode, node.value, (True, False))
+    subnode = yaml.nodes.ScalarNode(tag, node.value, node.start_mark, node.end_mark, node.style) 
+    value = loader.construct_object(subnode, True)
+    return cls(value)
+
 def construct_from_none(cls, loader, node):
     assert loader.construct_yaml_null(node) is None
     return cls()
@@ -51,11 +57,7 @@ def construct_from_args_kwargs(cls, loader, node):
 
 def construct_from_any(cls, loader, node):
     if isinstance(node, yaml.nodes.ScalarNode):
-        if loader.construct_yaml_null(node) is None:
-            return cls()
-        else:
-            value = loader.construct_scalar(node)
-            return cls(value)
+        return construct_from_scalar(cls, loader, node)
     elif isinstance(node, yaml.nodes.SequenceNode):
         return construct_from_sequence(cls, loader, node)
     elif isinstance(node, yaml.nodes.MappingNode):
