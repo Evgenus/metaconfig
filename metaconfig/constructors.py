@@ -33,7 +33,9 @@ def construct_from_none(cls, loader, node):
 
 def construct_from_value(cls, loader, node):
     if isinstance(node, yaml.nodes.ScalarNode):
-        value = loader.construct_scalar(node)
+        tag = loader.resolve(yaml.nodes.ScalarNode, node.value, (True, False))
+        subnode = yaml.nodes.ScalarNode(tag, node.value, node.start_mark, node.end_mark, node.style) 
+        value = loader.construct_object(subnode, True)
     elif isinstance(node, yaml.nodes.SequenceNode):
         value = loader.construct_sequence(node, True)
     elif isinstance(node, yaml.nodes.MappingNode):
