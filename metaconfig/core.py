@@ -73,8 +73,9 @@ def _create_core(frame, names):
     frame.loader.add_constructor("!" + names["resolve"], partial(construct_from_string, frame.resolve))
 
 class ConfigStackFrame(object):
-    def __init__(self, filepath, back, names):
+    def __init__(self, filepath, root, back, names):
         self._filepath = filepath
+        self._root = root
         self._back = back
         self._dependencies = {}
         self._resolved = {}
@@ -84,10 +85,7 @@ class ConfigStackFrame(object):
 
     @property
     def dirpath(self):
-        if self._filepath is not None:
-            return Path(self._filepath).parent
-        else:
-            return Path.cwd()
+        return Path(self._root)
 
     def get(self, name): 
         return self._dependencies[name]
@@ -120,14 +118,19 @@ DEFAULT_NAMES = {
 
 class Config(object):
     def __init__(self, names=None):
-        if names is None:
-            names = DEFAULT_NAMES
+        names_mix = dict(DEFAULT_NAMES)
+        if names is not None:
+            names_mix.update(names)
         self._files = []
-        self._names = names
-        self._head = ConfigStackFrame(None, None, self._names)
+        self._names = names_mix
+        self._head = ConfigStackFrame(None, self.root, None, self._names)
 
     def peek_frame(self):
         return self._head
+
+    @property
+    def root(self):
+        return Path.cwd()
 
     def push_frame(self, frame):
         self._head = frame
@@ -146,8 +149,10 @@ class Config(object):
         return Path(path).open("rt", encoding="utf-8")
 
     def push_file(self, relative):
-        self._files.append(relative)
-        frame = ConfigStackFrame(relative, self._head, self._names)
+        path = None if relative is None else Path(relative)
+        self._files.append(path)
+        root = self.root if path is None else path.parent
+        frame = ConfigStackFrame(path, root, self._head, self._names)
         self.push_frame(frame)
 
     def pop_file(self):
