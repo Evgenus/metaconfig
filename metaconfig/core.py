@@ -1,6 +1,7 @@
 from functools import reduce, partial
 from collections import OrderedDict
 from pathlib import Path
+from io import IOBase
 
 import yaml
 from zope.dottedname.resolve import resolve
@@ -139,7 +140,10 @@ class Config(object):
 
     def get_path(self, relative):
         frame = self.peek_frame()
-        return frame.dirpath / relative
+        return frame.dirpath.joinpath(relative).resolve()
+
+    def open_file(self, path):
+        return Path(path).open("rt", encoding="utf-8")
 
     def push_file(self, relative):
         self._files.append(relative)
@@ -159,18 +163,7 @@ class Config(object):
     def log(self, text):
         print(text)
 
-    def load(self, filename_or_stream):
-        if isinstance(filename_or_stream, str):
-            path = self.get_path(filename_or_stream)
-            filename = str(path)
-            stream = path.open("rt", encoding="utf-8")
-        else:
-            stream = filename_or_stream
-            if hasattr(stream, "name"):
-                filename = stream.name
-            else:
-                filename = None
-        
+    def _load_config(self, stream, filename):
         self.push_file(filename)
         loader = self.peek_frame().loader
         loader.add_constructor("!" + self._names["load"], partial(construct_from_string, self.load))
@@ -178,3 +171,17 @@ class Config(object):
         data = list(yaml.load_all(stream, Loader=loader))
         self.pop_file()
         return data
+
+    def load(self, filename_or_stream):
+        filename = None
+        if isinstance(filename_or_stream, (str, Path)):
+            path = self.get_path(filename_or_stream)
+            filename = str(path)
+            with self.open_file(path) as stream:
+                return self._load_config(stream, filename)
+        elif isinstance(filename_or_stream, IOBase):
+            if hasattr(filename_or_stream, "name"):
+                filename = filename_or_stream.name
+            return self._load_config(filename_or_stream, filename)
+        else:
+            raise ValueError("Invalid parameter {0}".format(filename_or_stream))
