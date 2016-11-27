@@ -73,19 +73,24 @@ def _create_core(frame, names):
     frame.loader.add_constructor("!" + names["resolve"], partial(construct_from_string, frame.resolve))
 
 class ConfigStackFrame(object):
-    def __init__(self, filepath, root, back, names):
-        self._filepath = filepath
-        self._root = root
-        self._back = back
+    def __init__(self, filepath, root, names):
+        self._filepath = None if filepath is None else Path(filepath)
+        self._root = Path(root)
         self._dependencies = {}
         self._resolved = {}
+        self._data = None
+        self._empty_names = set()
         class FrameLoader(Loader): pass
         self._loader = FrameLoader
         _create_core(self, names=names)
 
     @property
+    def filename(self):
+        return self._filepath
+
+    @property
     def dirpath(self):
-        return Path(self._root)
+        return self._root
 
     def get(self, name): 
         return self._dependencies[name]
@@ -95,7 +100,7 @@ class ConfigStackFrame(object):
 
     def grab(self, frame):
         for name, con in frame._loader.yaml_constructors.items():
-            if name in self._loader.yaml_constructors: continue
+            if name in self._empty_names: continue
             self._loader.add_constructor(name, con)
         self._dependencies.update(frame._dependencies)
 
@@ -107,6 +112,14 @@ class ConfigStackFrame(object):
     @property
     def loader(self):
         return self._loader
+
+    @property
+    def data(self):
+        return self._data
+
+    def load(self, stream):
+        self._empty_names = set(self._loader.yaml_constructors)
+        self._data = list(yaml.load_all(stream, Loader=self._loader))
 
 DEFAULT_NAMES = {
     "declare": "declare",
@@ -122,24 +135,30 @@ class Config(object):
         if names is not None:
             names_mix.update(names)
         self._files = []
+        self._frames = {}
         self._names = names_mix
-        self._head = ConfigStackFrame(None, self.root, None, self._names)
+        self._results = {}
+        self._stack = [ConfigStackFrame(None, self.root, self._names)]
 
     def peek_frame(self):
-        return self._head
+        return self._stack[-1]
 
     @property
     def root(self):
         return Path.cwd()
 
     def push_frame(self, frame):
-        self._head = frame
+        self._stack.append(frame)
 
     def pop_frame(self):
-        top = self._head
-        self._head = self._head._back
-        self._head.grab(top)
+        top = self._stack.pop()
+        self._stack[-1].grab(top)
         return top
+
+    def get_frame(self, filename):
+        if filename is None:
+            return None
+        return self._frames.get(Path(filename))
 
     def get_path(self, relative):
         frame = self.peek_frame()
@@ -152,7 +171,8 @@ class Config(object):
         path = None if relative is None else Path(relative)
         self._files.append(path)
         root = self.root if path is None else path.parent
-        frame = ConfigStackFrame(path, root, self._head, self._names)
+        frame = ConfigStackFrame(path, root, self._names)
+        self._frames[path] = frame
         self.push_frame(frame)
 
     def pop_file(self):
@@ -169,13 +189,18 @@ class Config(object):
         print(text)
 
     def _load_config(self, stream, filename):
-        self.push_file(filename)
-        loader = self.peek_frame().loader
-        loader.add_constructor("!" + self._names["load"], partial(construct_from_string, self.load))
-        self.log("Loading config: {}".format(filename))
-        data = list(yaml.load_all(stream, Loader=loader))
-        self.pop_file()
-        return data
+        frame = self.get_frame(filename)
+        if frame is not None:
+            self.push_frame(frame)
+            self.pop_frame()            
+        else:
+            self.push_file(filename)
+            frame = self.peek_frame()
+            frame.loader.add_constructor("!" + self._names["load"], partial(construct_from_string, self.load))
+            self.log("Loading config: {}".format(filename))
+            frame.load(stream)
+            self.pop_file()
+        return frame.data
 
     def load(self, filename_or_stream):
         filename = None
